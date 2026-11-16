@@ -1,5 +1,6 @@
 import express from "express";
 import type { ErrorRequestHandler } from "express";
+import { fileURLToPath } from "node:url";
 import { z } from "zod";
 
 import {
@@ -41,6 +42,14 @@ const issueList = (error: z.ZodError) =>
 export const app = express();
 app.disable("x-powered-by");
 app.use(express.json({ limit: "32kb" }));
+
+// The build copies src/static into dist/static, so the same relative URL works
+// whether this file is running from src (tsx) or dist (node).
+const landingPage = fileURLToPath(new URL("./static/index.html", import.meta.url));
+
+app.get("/", (_req, res) => {
+  res.sendFile(landingPage);
+});
 
 app.get("/health", (_req, res) => {
   res.json({ status: "ok" });

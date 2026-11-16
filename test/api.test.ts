@@ -66,6 +66,13 @@ describe("health", () => {
     assert.equal(response.status, 200);
     assert.deepEqual(await response.json(), { status: "ok" });
   });
+
+  it("serves the landing page at the root", async () => {
+    const response = await fetch(`${baseUrl}/`);
+    assert.equal(response.status, 200);
+    assert.match(response.headers.get("content-type") ?? "", /text\/html/);
+    assert.match(await response.text(), /fund-flows API/);
+  });
 });
 
 describe("clients", () => {

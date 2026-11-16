@@ -31,6 +31,7 @@ which is exactly the case worth catching.
 
 | Method | Path | What it does |
 | --- | --- | --- |
+| GET | `/` | Landing page, with the reconciliation table fetched live |
 | GET | `/health` | Liveness check |
 | GET | `/clients` | All clients, by name |
 | GET | `/clients/:id` | One client |
@@ -74,7 +75,7 @@ on purpose so `/reconciliation` has something to return.
 npm test
 ```
 
-14 tests against a real Postgres, not a mock. The reconciliation query depends
+15 tests against a real Postgres, not a mock. The reconciliation query depends
 on `NUMERIC` arithmetic, `date_trunc` and `FULL OUTER JOIN` behaving as Postgres
 defines them, and a fake database would test the fake. Each test truncates and
 re-seeds first, so they are order independent.

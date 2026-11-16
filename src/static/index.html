@@ -1,0 +1,192 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>fund-flows API</title>
+    <style>
+      :root {
+        color-scheme: light dark;
+        --ink: #1a1a1a;
+        --muted: #5b5b5b;
+        --line: #d8d8d8;
+        --bg: #fdfdfc;
+        --warn: #8a4b00;
+      }
+      @media (prefers-color-scheme: dark) {
+        :root {
+          --ink: #ececec;
+          --muted: #a3a3a3;
+          --line: #3a3a3a;
+          --bg: #161615;
+          --warn: #e0a45e;
+        }
+      }
+      body {
+        margin: 0 auto;
+        padding: 3rem 1.5rem 4rem;
+        max-width: 44rem;
+        background: var(--bg);
+        color: var(--ink);
+        font: 16px/1.6 system-ui, -apple-system, "Segoe UI", sans-serif;
+      }
+      h1 {
+        font-size: 1.6rem;
+        margin: 0 0 0.25rem;
+        letter-spacing: -0.01em;
+      }
+      p {
+        margin: 0 0 1rem;
+      }
+      .lede {
+        color: var(--muted);
+      }
+      h2 {
+        font-size: 0.8rem;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+        color: var(--muted);
+        margin: 2.5rem 0 0.75rem;
+      }
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 0.9rem;
+        margin-bottom: 0.5rem;
+      }
+      th,
+      td {
+        text-align: left;
+        padding: 0.5rem 0.4rem;
+        border-bottom: 1px solid var(--line);
+      }
+      th {
+        font-weight: 600;
+        color: var(--muted);
+      }
+      td.num,
+      th.num {
+        text-align: right;
+        font-variant-numeric: tabular-nums;
+      }
+      code {
+        font-family: ui-monospace, "Cascadia Mono", Consolas, monospace;
+        font-size: 0.88em;
+        background: color-mix(in srgb, var(--line) 45%, transparent);
+        padding: 0.1em 0.35em;
+        border-radius: 3px;
+      }
+      ul.endpoints {
+        list-style: none;
+        padding: 0;
+        margin: 0;
+        font-size: 0.92rem;
+      }
+      ul.endpoints li {
+        padding: 0.4rem 0;
+        border-bottom: 1px solid var(--line);
+      }
+      ul.endpoints li span {
+        color: var(--muted);
+      }
+      a {
+        color: inherit;
+      }
+      .note {
+        color: var(--muted);
+        font-size: 0.85rem;
+        margin-top: 2.5rem;
+        padding-top: 1rem;
+        border-top: 1px solid var(--line);
+      }
+      .status {
+        color: var(--warn);
+        font-size: 0.9rem;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>fund-flows API</h1>
+    <p class="lede">
+      Flows recorded against a client and fund, summarised by month, and
+      reconciled against the total the sales side reported.
+    </p>
+    <p>
+      When those two numbers disagree, someone has to find out where. The table
+      below is live: it is the output of <code>GET /reconciliation</code>.
+    </p>
+
+    <h2>Months that disagree</h2>
+    <table>
+      <thead>
+        <tr>
+          <th>Client</th>
+          <th>Month</th>
+          <th class="num">Sum of flows</th>
+          <th class="num">Reported</th>
+          <th class="num">Difference</th>
+        </tr>
+      </thead>
+      <tbody id="rows">
+        <tr>
+          <td colspan="5" class="status">Loading. The free tier sleeps, so this can take a minute.</td>
+        </tr>
+      </tbody>
+    </table>
+    <p class="status" id="error" hidden></p>
+
+    <h2>Endpoints</h2>
+    <ul class="endpoints">
+      <li><a href="/clients"><code>GET /clients</code></a> <span>reference data, by name</span></li>
+      <li><a href="/clients/3/summary"><code>GET /clients/3/summary</code></a> <span>month by month, and the gap</span></li>
+      <li><a href="/flows"><code>GET /flows</code></a> <span>filter with <code>clientId</code>, <code>fundId</code>, <code>month</code></span></li>
+      <li><a href="/funds"><code>GET /funds</code></a> <span>reference data</span></li>
+      <li><a href="/reconciliation"><code>GET /reconciliation</code></a> <span>every disagreement, either direction</span></li>
+      <li><a href="/health"><code>GET /health</code></a> <span>liveness</span></li>
+      <li><code>POST /flows</code> <span>record a movement</span></li>
+      <li><code>PUT /clients/:id/reported-totals</code> <span>record what the business says a month came to</span></li>
+    </ul>
+
+    <p class="note">
+      All data is fictional. Source and tests at
+      <a href="https://github.com/MNB4556/fund-flows-api">github.com/MNB4556/fund-flows-api</a>.
+    </p>
+
+    <script>
+      const rows = document.getElementById("rows");
+      const errorLine = document.getElementById("error");
+
+      const amount = (value) =>
+        Number(value).toLocaleString("en-GB", { maximumFractionDigits: 2 });
+
+      fetch("/reconciliation")
+        .then((response) => {
+          if (!response.ok) throw new Error("HTTP " + response.status);
+          return response.json();
+        })
+        .then((body) => {
+          if (body.count === 0) {
+            rows.innerHTML =
+              '<tr><td colspan="5">Nothing out of balance.</td></tr>';
+            return;
+          }
+          rows.innerHTML = body.discrepancies
+            .map(
+              (row) => `<tr>
+                <td>${row.clientName}</td>
+                <td>${row.month}</td>
+                <td class="num">${amount(row.actual)}</td>
+                <td class="num">${amount(row.reported)}</td>
+                <td class="num">${amount(row.difference)}</td>
+              </tr>`,
+            )
+            .join("");
+        })
+        .catch((error) => {
+          rows.innerHTML = "";
+          errorLine.hidden = false;
+          errorLine.textContent = "Could not load the table: " + error.message;
+        });
+    </script>
+  </body>
+</html>
