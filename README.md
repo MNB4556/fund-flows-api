@@ -80,9 +80,9 @@ after typechecking and building.
 
 ## Notes
 
-- Built with an AI coding assistant, reviewed line by line. The month filter bug
-  above was found by the test suite, not by reading it back, and the fix was to
-  filter both sides of the join.
+- The month filter bug was found by the test suite, not by reading the query
+  back. It is included here because the fix is the interesting part: filter both
+  sides of the join, or the outer join reassembles what you excluded.
 - No authentication. This is a portfolio service over fictional data, not
   something to point at the internet with real client records in it.
 - Amounts are stored per client currency with no conversion. A real fund
