@@ -4,6 +4,10 @@ A small TypeScript service for fund flows, client summaries and monthly
 reconciliation. Node, Express 5, PostgreSQL, Zod validation, and tests that run
 against a real database.
 
+Live at <https://fund-flows-api-4q3k.onrender.com>. The free tier sleeps after
+fifteen minutes of inactivity, so the first request can take about a minute to
+wake up.
+
 It exists because of a specific problem: a sales team records what a client's
 month came to, and a system records the individual movements. When those two
 numbers disagree, somebody has to find out where. Most of the interesting work
