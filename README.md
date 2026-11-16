@@ -80,6 +80,10 @@ on `NUMERIC` arithmetic, `date_trunc` and `FULL OUTER JOIN` behaving as Postgres
 defines them, and a fake database would test the fake. Each test truncates and
 re-seeds first, so they are order independent.
 
+Truncating means the suite must never touch a database with real or demo data in
+it. It prefers `DATABASE_URL_TEST` over `DATABASE_URL`, and refuses to start
+unless the connected database's name ends in `_test`.
+
 CI runs the suite on Node 22 and 24, each with a Postgres 16 service container,
 after typechecking and building.
 

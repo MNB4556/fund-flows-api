@@ -1,16 +1,27 @@
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import type { Server } from "node:http";
 import type { AddressInfo } from "node:net";
+import { resolve } from "node:path";
 import { after, before, beforeEach, describe, it } from "node:test";
 
-import { app } from "../src/app.js";
-import { pool } from "../src/db.js";
-
 // These tests run against a real Postgres. CI provides one as a service
-// container; locally, point DATABASE_URL at a scratch database. There is no
-// in-memory substitute, because the reconciliation query relies on NUMERIC,
+// container; locally, point DATABASE_URL_TEST at a scratch database. There is
+// no in-memory substitute, because the reconciliation query relies on NUMERIC,
 // FULL OUTER JOIN and date_trunc behaving as Postgres defines them.
+//
+// The tests truncate every table, so they must never see the database behind
+// the deployed demo. DATABASE_URL_TEST is preferred when it exists, and the
+// before hook refuses to run against a database whose name does not end in
+// "_test".
+const envPath = resolve(process.cwd(), ".env");
+if (existsSync(envPath)) {
+  process.loadEnvFile(envPath);
+}
+process.env["DATABASE_URL"] = process.env["DATABASE_URL_TEST"] ?? process.env["DATABASE_URL"];
+
+const { app } = await import("../src/app.js");
+const { pool } = await import("../src/db.js");
 
 let server: Server;
 let baseUrl = "";
@@ -44,6 +55,15 @@ const put = (path: string, body: unknown) =>
   });
 
 before(async () => {
+  const { rows } = await pool.query<{ name: string }>("SELECT current_database() AS name");
+  const name = rows[0]?.name ?? "";
+  if (!name.endsWith("_test")) {
+    throw new Error(
+      `refusing to run destructive tests against database "${name}". ` +
+        "Set DATABASE_URL_TEST to a database whose name ends in _test.",
+    );
+  }
+
   const schema = readFileSync(new URL("../db/schema.sql", import.meta.url), "utf8");
   await pool.query(schema);
 
